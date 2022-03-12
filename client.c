@@ -103,7 +103,7 @@ int main (int argc, char** argv) {
 
 	printf("Please enter your name and password:\n");
 	printf("Name:\n");
-    fgets(name, 32, stdin);
+        fgets(name, 32, stdin);
 	printf("Password:\n");
 	fgets(password, 32, stdin);
     
@@ -121,14 +121,14 @@ int main (int argc, char** argv) {
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
     
 	server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = inet_addr(ip);
-    server_addr.sin_port = htons(port);
+  	server_addr.sin_addr.s_addr = inet_addr(ip);
+        server_addr.sin_port = htons(port);
 
 
-    //Connect to Server
-    int err = connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr));
+    	//Connect to Server
+  	int err = connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr));
   
-    if (err == -1) {
+   	if (err == -1) {
 		printf("ERROR: connect\n");
 		
 		return EXIT_FAILURE;
@@ -143,14 +143,14 @@ int main (int argc, char** argv) {
 	printf("=== WELCOME TO THE SERVER-MULTIPLE CLIENTS CHATROOM ===\n");
 
 	pthread_t send_msg_thread;
-    if(pthread_create(&send_msg_thread, NULL, (void *) send_msg_handler, NULL) != 0) {
+        if(pthread_create(&send_msg_thread, NULL, (void *) send_msg_handler, NULL) != 0) {
 		printf("ERROR: pthread\n");
     
 		return EXIT_FAILURE;
 	}
 
 	pthread_t recv_msg_thread;
-    if(pthread_create(&recv_msg_thread, NULL, (void *) recv_msg_handler, NULL) != 0) {
+        if(pthread_create(&recv_msg_thread, NULL, (void *) recv_msg_handler, NULL) != 0) {
 		printf("ERROR: pthread\n");
 		
 		return EXIT_FAILURE;
@@ -161,8 +161,8 @@ int main (int argc, char** argv) {
 			printf("\nBye\n");
 			
 			break;
-    }
-	}
+   		}
+        }
 
 	close(sockfd);
 
