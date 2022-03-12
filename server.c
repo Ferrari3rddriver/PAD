@@ -159,15 +159,15 @@ void* handle_client(void *arg) {
 	}
 
     //Delete client from queue and yield thread
-	close(cli->sockfd);
+    close(cli->sockfd);
     queue_remove_client(cli->uid);
     
-	free(cli);
+    free(cli);
     
-	clients_connected_count--;
+    clients_connected_count--;
     pthread_detach(pthread_self());
 
-	return NULL;
+    return NULL;
 }
 
 int main (int argc, char** argv) {
