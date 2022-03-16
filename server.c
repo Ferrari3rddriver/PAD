@@ -12,9 +12,11 @@
 
 #define MAX_CLIENTS_ACCEPTED 10
 #define BUFFER_SIZE 1024
+#define MAX_USERS 20
 
 static _Atomic unsigned int clients_connected_count = 0;
 static int uid = 10;
+int users_idx = 0;
 
 //Client structure
 typedef struct { 
@@ -22,10 +24,17 @@ typedef struct {
 	int sockfd;
 	int uid;
 	char name[32];
-	char password[32]
+	char password[32];
 } client_t;
 
+//User structure
+typedef struct {
+	char name[32];
+	char password[32];
+} user;
+
 client_t* clients[MAX_CLIENTS_ACCEPTED];
+user users[MAX_USERS]; 
 
 pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -45,12 +54,40 @@ void str_trim_lf (char* arr, int length) {
   }
 }
 
-void print_client_addr (struct sockaddr_in addr) {
-    printf("%d.%d.%d.%d",
-        addr.sin_addr.s_addr & 0xff,
-        (addr.sin_addr.s_addr & 0xff00) >> 8,
-        (addr.sin_addr.s_addr & 0xff0000) >> 16,
-        (addr.sin_addr.s_addr & 0xff000000) >> 24);
+void init_users() {
+
+	char buff1[32];
+	char buff2[32];
+	FILE * fread;
+	fread=fopen("users.in", "r");
+
+	if(fread == NULL) {
+		printf("ERROR: users.in");
+		exit(EXIT_FAILURE);
+	}
+
+	while(fscanf(fread, "%s %s\n", buff1, buff2)!=-1) {
+
+		printf("%s %s\n", buff1, buff2);
+
+		strcpy(users[users_idx].name, buff1);
+		strcpy(users[users_idx].password, buff2);
+
+		users_idx++;
+	}
+
+	fclose(fread);
+}
+
+int check_user(char user_name[32], char user_pass[32]) {
+
+	int i;
+	for(i=0; i<users_idx; i++) {
+		if((strcmp(users[i].name, user_name) == 0) && (strcmp(users[i].password, user_pass) == 0))
+			return 1;
+	}
+	return 0;
+
 }
 
 //Add clients to queue
@@ -103,27 +140,56 @@ void send_message (char* string_to_send, int uid) {
 	pthread_mutex_unlock(&clients_mutex);
 }
 
+//Server replies client
+void send_credentials_message (char* string_to_send, int uid) {
+	pthread_mutex_lock(&clients_mutex);
+
+	for(int i=0; i<MAX_CLIENTS_ACCEPTED; ++i) {
+		if(clients[i]) {
+			if(clients[i]->uid == uid){
+				if(write (clients[i]->sockfd, string_to_send, strlen(string_to_send)) < 0) {
+					
+					perror("ERROR: write to descriptor failed");
+					
+					break;
+				}
+			}
+		}
+	}
+
+	pthread_mutex_unlock(&clients_mutex);
+}
+
 //Handle communication with client
 void* handle_client(void *arg) {
 	char buff_out[BUFFER_SIZE];
 	char name[32];
 	char password[32];
+	char credentials[65];
 	int leave_flag = 0;
 
 	clients_connected_count++;
 	client_t* cli = (client_t* ) arg;
 
 	//Client name
-	if((recv(cli->sockfd, name, 32, 0) <= 0 || strlen(name) <  2 || strlen(name) >= 32-1) || (recv(cli->sockfd, password, 32, 0) <= 0 || strlen(password) <  2 || strlen(password) >= 32-1)) {
-		printf("Didn't enter the name or password.\n");
+	recv(cli->sockfd, credentials, 65, 0);
+	
+	sscanf(credentials, "%s %s", name, password);
+
+	if(check_user(name, password) == 0) {
+		strcpy(buff_out, "ERR");
+		send_credentials_message(buff_out, cli->uid);
 		
 		leave_flag = 1;
-	} else {
+	} 
+	else {
 		strcpy(cli->name, name);
 		strcpy(cli->password, password);
 		sprintf(buff_out, "%s has joined\n", cli->name);
 		printf("%s", buff_out);
 		send_message(buff_out, cli->uid);
+		send(cli->sockfd, "OK", 5, 0);
+
 	}
 
 	bzero(buff_out, BUFFER_SIZE);
@@ -159,15 +225,15 @@ void* handle_client(void *arg) {
 	}
 
     //Delete client from queue and yield thread
-    close(cli->sockfd);
+	close(cli->sockfd);
     queue_remove_client(cli->uid);
     
-    free(cli);
+	free(cli);
     
-    clients_connected_count--;
+	clients_connected_count--;
     pthread_detach(pthread_self());
 
-    return NULL;
+	return NULL;
 }
 
 int main (int argc, char** argv) {
@@ -181,6 +247,8 @@ int main (int argc, char** argv) {
 	char *ip = "127.0.0.1";
 	int port = atoi(argv[1]);
 	
+	init_users();
+
 	int option = 1;
 	int listenfd = 0, connfd = 0;
 
@@ -227,10 +295,7 @@ int main (int argc, char** argv) {
 
 		//Max clients limit checking 
 		if((clients_connected_count + 1) == MAX_CLIENTS_ACCEPTED){
-			printf("Max clients reached. Rejected: ");
-			
-			print_client_addr(client_addr);
-			printf(":%d\n", client_addr.sin_port);
+			printf("Max clients reached.\n");
 			
 			close(connfd);
 			continue;

@@ -22,12 +22,6 @@ void str_overwrite_stdout() {
 	fflush(stdout);
 }
 
-void str_overwrite_stdout_me() {
-	printf("\r%s%s(me): ","> ", name);
-  
-	fflush(stdout);
-}
-
 void str_trim_lf (char* arr, int length) {
   int i;
   for (i = 0; i < length; i++) { 
@@ -102,14 +96,22 @@ int main (int argc, char** argv) {
 	signal(SIGINT, catch_ctrl_c_and_exit);
 
 	printf("Please enter your name and password:\n");
-	printf("Name:\n");
-        fgets(name, 32, stdin);
-	printf("Password:\n");
+	printf("Name: ");
+    fgets(name, 32, stdin);
+	printf("Password: ");
 	fgets(password, 32, stdin);
+	name[strlen(name)]='\0';
+	password[strlen(password)]='\0';
     
 	str_trim_lf(name, strlen(name));
 
 	if (strlen(name) > 32 || strlen(name) < 2) { 
+		printf("Name and Password must be less than 30 and more than 2 characters.\n");
+		
+		return EXIT_FAILURE;
+	}
+
+	if (strlen(password) > 32 || strlen(password) < 2) { 
 		printf("Name and Password must be less than 30 and more than 2 characters.\n");
 		
 		return EXIT_FAILURE;
@@ -121,48 +123,62 @@ int main (int argc, char** argv) {
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
     
 	server_addr.sin_family = AF_INET;
-  	server_addr.sin_addr.s_addr = inet_addr(ip);
-        server_addr.sin_port = htons(port);
+    server_addr.sin_addr.s_addr = inet_addr(ip);
+    server_addr.sin_port = htons(port);
 
 
-    	//Connect to Server
-  	int err = connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr));
+    //Connect to Server
+    int err = connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr));
   
-   	if (err == -1) {
+    if (err == -1) {
 		printf("ERROR: connect\n");
 		
 		return EXIT_FAILURE;
 	}
 
-	//Send name
-	send(sockfd, name, 32, 0);
+	//Send name and password
+	char credentials [65];
+	char resp[5];
+	// strcat(credentials, name);
+	// strcat(credentials, " ");
+	// strcat(credentials, password);
+	sprintf(credentials,"%s %s",name,password);
+	
+	send(sockfd, credentials, 65, 0);
 
-	//Send password
-	send(sockfd, name, 32, 0);
+	recv(sockfd, resp, 5, 0);
 
-	printf("=== WELCOME TO THE SERVER-MULTIPLE CLIENTS CHATROOM ===\n");
+	if(strcmp(resp, "ERR") == 0)
+	{
+		printf("ERROR: wrong credentials\n");
+    
+		return EXIT_FAILURE;
+	}
 
 	pthread_t send_msg_thread;
-        if(pthread_create(&send_msg_thread, NULL, (void *) send_msg_handler, NULL) != 0) {
+    if(pthread_create(&send_msg_thread, NULL, (void *) send_msg_handler, NULL) != 0) {
 		printf("ERROR: pthread\n");
     
 		return EXIT_FAILURE;
 	}
 
 	pthread_t recv_msg_thread;
-        if(pthread_create(&recv_msg_thread, NULL, (void *) recv_msg_handler, NULL) != 0) {
+    if(pthread_create(&recv_msg_thread, NULL, (void *) recv_msg_handler, NULL) != 0) {
 		printf("ERROR: pthread\n");
 		
 		return EXIT_FAILURE;
 	}
+
+	printf("=== WELCOME TO THE SERVER-MULTIPLE CLIENTS CHATROOM ===\n");
+
 
 	while (1) { 
 		if(flag) {
 			printf("\nBye\n");
 			
 			break;
-   		}
-        }
+    }
+	}
 
 	close(sockfd);
 
