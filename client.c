@@ -139,9 +139,7 @@ int main (int argc, char** argv) {
 	//Send name and password
 	char credentials [65];
 	char resp[5];
-	// strcat(credentials, name);
-	// strcat(credentials, " ");
-	// strcat(credentials, password);
+
 	sprintf(credentials,"%s %s",name,password);
 	
 	send(sockfd, credentials, 65, 0);
@@ -169,12 +167,12 @@ int main (int argc, char** argv) {
 		return EXIT_FAILURE;
 	}
 
-	printf("=== WELCOME TO THE SERVER-MULTIPLE CLIENTS CHATROOM ===\n");
+	printf("ENTERED CHAT ROOM\n");
 
 
 	while (1) { 
 		if(flag) {
-			printf("\nBye\n");
+			printf("\nLEFT CHAT ROOM\n");
 			
 			break;
     }

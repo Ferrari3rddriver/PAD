@@ -68,7 +68,7 @@ void init_users() {
 
 	while(fscanf(fread, "%s %s\n", buff1, buff2)!=-1) {
 
-		printf("%s %s\n", buff1, buff2);
+		//printf("%s %s\n", buff1, buff2);
 
 		strcpy(users[users_idx].name, buff1);
 		strcpy(users[users_idx].password, buff2);
@@ -140,28 +140,9 @@ void send_message (char* string_to_send, int uid) {
 	pthread_mutex_unlock(&clients_mutex);
 }
 
-//Server replies client
-void send_credentials_message (char* string_to_send, int uid) {
-	pthread_mutex_lock(&clients_mutex);
-
-	for(int i=0; i<MAX_CLIENTS_ACCEPTED; ++i) {
-		if(clients[i]) {
-			if(clients[i]->uid == uid){
-				if(write (clients[i]->sockfd, string_to_send, strlen(string_to_send)) < 0) {
-					
-					perror("ERROR: write to descriptor failed");
-					
-					break;
-				}
-			}
-		}
-	}
-
-	pthread_mutex_unlock(&clients_mutex);
-}
-
 //Handle communication with client
 void* handle_client(void *arg) {
+
 	char buff_out[BUFFER_SIZE];
 	char name[32];
 	char password[32];
@@ -177,9 +158,9 @@ void* handle_client(void *arg) {
 	sscanf(credentials, "%s %s", name, password);
 
 	if(check_user(name, password) == 0) {
-		strcpy(buff_out, "ERR");
-		send_credentials_message(buff_out, cli->uid);
-		
+				
+		send(cli->sockfd, "ERR", 65, 0);
+
 		leave_flag = 1;
 	} 
 	else {
@@ -287,7 +268,7 @@ int main (int argc, char** argv) {
 		return EXIT_FAILURE;
 	}
 
-	printf("=== WELCOME TO THE SERVER-MULTIPLE CLIENTS CHATROOM ===\n");
+	printf("START CHAT ROOM\n");
 
 	while(1) {
 		socklen_t client = sizeof(client_addr);
